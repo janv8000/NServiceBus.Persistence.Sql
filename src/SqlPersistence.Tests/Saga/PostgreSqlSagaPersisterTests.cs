@@ -1,11 +1,19 @@
 using System;
 using System.Data.Common;
+using Npgsql;
 using NServiceBus.Persistence.Sql.ScriptBuilder;
 
 public class PostgreSqlSagaPersisterTests : SagaPersisterTests
 {
     public PostgreSqlSagaPersisterTests() : base(BuildSqlDialect.PostgreSql, null)
     {
+        SagaPersister.PreExecute = command =>
+        {
+            using (var connection = (NpgsqlConnection)GetConnection()())
+            {
+                PostgreSqlHelper.ExplainCommand(command, connection);
+            }
+        };
     }
 
     protected override Func<DbConnection> GetConnection()

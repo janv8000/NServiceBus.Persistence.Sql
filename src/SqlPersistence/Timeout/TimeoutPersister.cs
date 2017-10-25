@@ -18,6 +18,7 @@ class TimeoutPersister : IPersistTimeouts, IQueryTimeouts
     Func<DateTime> utcNow;
     DateTime lastTimeoutsCleanupExecution;
     DateTime oldestSupportedTimeout;
+    internal static Action<DbCommand> PreExecute;
 
     public TimeoutPersister(Func<DbConnection> connectionBuilder, string tablePrefix, SqlDialect sqlDialect, TimeSpan timeoutsCleanupExecutionInterval, Func<DateTime> utcNow)
     {
@@ -37,6 +38,7 @@ class TimeoutPersister : IPersistTimeouts, IQueryTimeouts
         {
             command.CommandText = timeoutCommands.Peek;
             command.AddParameter("Id", guid);
+            PreExecute?.Invoke(command);
             // to avoid loading into memory SequentialAccess is required which means each fields needs to be accessed
             using (var reader = await command.ExecuteReaderAsync(CommandBehavior.SingleRow | CommandBehavior.SequentialAccess).ConfigureAwait(false))
             {
@@ -100,6 +102,7 @@ class TimeoutPersister : IPersistTimeouts, IQueryTimeouts
         {
             command.CommandText = timeoutCommands.RemoveById;
             command.AddParameter("Id", guid);
+            PreExecute?.Invoke(command);
             var rowsAffected = await command.ExecuteNonQueryAsync().ConfigureAwait(false);
             return rowsAffected == 1;
         }
@@ -126,6 +129,7 @@ class TimeoutPersister : IPersistTimeouts, IQueryTimeouts
                 command.CommandText = timeoutCommands.Range;
                 command.AddParameter("StartTime", startSlice);
                 command.AddParameter("EndTime", now);
+                PreExecute?.Invoke(command);
                 using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
                 {
                     while (await reader.ReadAsync().ConfigureAwait(false))
@@ -140,6 +144,7 @@ class TimeoutPersister : IPersistTimeouts, IQueryTimeouts
             {
                 command.CommandText = timeoutCommands.Next;
                 command.AddParameter("EndTime", now);
+                PreExecute?.Invoke(command);
                 var executeScalar = await command.ExecuteScalarAsync().ConfigureAwait(false);
                 if (executeScalar == null)
                 {
@@ -161,6 +166,7 @@ class TimeoutPersister : IPersistTimeouts, IQueryTimeouts
         {
             command.CommandText = timeoutCommands.RemoveBySagaId;
             command.AddParameter("SagaId", sagaId);
+            PreExecute?.Invoke(command.InnerCommand);
             await command.ExecuteNonQueryEx().ConfigureAwait(false);
         }
     }

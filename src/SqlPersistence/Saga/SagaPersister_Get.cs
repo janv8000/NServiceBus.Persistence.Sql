@@ -9,6 +9,7 @@ using NServiceBus.Persistence;
 
 partial class SagaPersister
 {
+    internal static Action<DbCommand> PreExecute;
     internal static async Task<TSagaData> GetByWhereClause<TSagaData>(string whereClause, SynchronizedStorageSession session, ContextBag context, ParameterAppender appendParameters, SagaInfoCache sagaInfoCache)
         where TSagaData : class, IContainSagaData
     {
@@ -80,6 +81,8 @@ where {whereClause}";
             command.Transaction = sqlSession.Transaction;
             var dbCommand = command.InnerCommand;
             appendParameters(dbCommand.CreateParameter, parameter => dbCommand.Parameters.Add(parameter));
+
+            PreExecute?.Invoke(dbCommand);
             // to avoid loading into memory SequentialAccess is required which means each fields needs to be accessed
             using (var dataReader = await command.ExecuteReaderAsync(CommandBehavior.SingleRow | CommandBehavior.SequentialAccess).ConfigureAwait(false))
             {

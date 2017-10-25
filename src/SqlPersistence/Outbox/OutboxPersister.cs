@@ -19,6 +19,7 @@ class OutboxPersister : IOutboxStorage
     SqlDialect sqlDialect;
     int cleanupBatchSize;
     OutboxCommands outboxCommands;
+    internal static Action<DbCommand> PreExecute;
 
     public OutboxPersister(Func<DbConnection> connectionBuilder, string tablePrefix, SqlDialect sqlDialect, int cleanupBatchSize = 10000)
     {
@@ -60,6 +61,7 @@ class OutboxPersister : IOutboxStorage
                 command.Transaction = transaction;
                 command.AddParameter("MessageId", messageId);
                 // to avoid loading into memory SequentialAccess is required which means each fields needs to be accessed
+                PreExecute?.Invoke(command.InnerCommand);
                 using (var dataReader = await command.ExecuteReaderAsync(CommandBehavior.SingleRow | CommandBehavior.SequentialAccess).ConfigureAwait(false))
                 {
                     if (!await dataReader.ReadAsync().ConfigureAwait(false))

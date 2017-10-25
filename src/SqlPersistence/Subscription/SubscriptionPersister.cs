@@ -15,6 +15,7 @@ using NServiceBus.Unicast.Subscriptions.MessageDrivenSubscriptions;
 
 class SubscriptionPersister : ISubscriptionStorage
 {
+    internal static Action<DbCommand> PreExecute;
     public SubscriptionPersister(Func<DbConnection> connectionBuilder, string tablePrefix, SqlDialect sqlDialect, TimeSpan? cacheFor)
     {
         this.connectionBuilder = connectionBuilder;
@@ -157,6 +158,7 @@ class SubscriptionPersister : ISubscriptionStorage
                 command.AddParameter(paramName, messageType.TypeName);
             }
             command.CommandText = getSubscribersCommand;
+            PreExecute?.Invoke(command.InnerCommand);
             using (var reader = await command.ExecuteReaderAsync().ConfigureAwait(false))
             {
                 var subscribers = new List<Subscriber>();

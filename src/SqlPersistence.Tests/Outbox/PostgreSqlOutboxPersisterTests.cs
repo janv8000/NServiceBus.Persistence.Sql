@@ -1,5 +1,6 @@
 using System;
 using System.Data.Common;
+using Npgsql;
 using NServiceBus.Persistence.Sql.ScriptBuilder;
 using NUnit.Framework;
 
@@ -8,6 +9,14 @@ public class PostgreSqlOutboxPersisterTests : OutboxPersisterTests
 {
     public PostgreSqlOutboxPersisterTests() : base(BuildSqlDialect.PostgreSql, null)
     {
+        OutboxPersister.PreExecute = command =>
+        {
+            using (var connection = (NpgsqlConnection)GetConnection()())
+            {
+                connection.Open();
+                PostgreSqlHelper.ExplainCommand(command, connection);
+            }
+        };
     }
 
     protected override Func<DbConnection> GetConnection()
